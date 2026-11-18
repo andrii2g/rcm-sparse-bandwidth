@@ -12,6 +12,7 @@ use rcm_sparse_bandwidth::graph::Graph;
 use rcm_sparse_bandwidth::metrics::Metrics;
 use rcm_sparse_bandwidth::ordering::{BfsStats, TraceEvent, rcm, trace_rcm};
 use rcm_sparse_bandwidth::permutation::{Permutation, shuffled_indices};
+use rcm_sparse_bandwidth::svg;
 use rcm_sparse_bandwidth::verification::verify;
 
 const DEFAULT_SEED: u64 = 42;
@@ -53,6 +54,15 @@ enum Command {
         #[arg(long, default_value_t = DEFAULT_SEED)]
         seed: u64,
     },
+    /// Render original, shuffled, and RCM adjacency matrices as one SVG.
+    Render {
+        #[arg(long)]
+        input: PathBuf,
+        #[arg(long)]
+        output: PathBuf,
+        #[arg(long, default_value_t = DEFAULT_SEED)]
+        seed: u64,
+    },
 }
 
 fn main() -> ExitCode {
@@ -82,6 +92,11 @@ fn run(command: Command) -> Result<(), String> {
             trials,
             seed,
         } => benchmark::run(&vertices, trials, seed, &mut io::stdout().lock()),
+        Command::Render {
+            input,
+            output,
+            seed,
+        } => render(&read_graph(&input)?, &output, seed),
     }
 }
 
@@ -158,4 +173,20 @@ fn shuffle(graph: &Graph, seed: u64) -> Result<Graph, String> {
 fn apply_order(graph: &Graph, new_to_old: Vec<usize>) -> Result<Graph, String> {
     let permutation = Permutation::new(new_to_old, graph.vertices().len())?;
     graph.permuted(&permutation)
+}
+
+fn render(graph: &Graph, path: &Path, seed: u64) -> Result<(), String> {
+    let shuffled = shuffle(graph, seed)?;
+    let reordered = apply_order(graph, rcm(graph).new_to_old)?;
+    let image = svg::render(graph, &shuffled, &reordered);
+    if let Some(directory) = path
+        .parent()
+        .filter(|parent| !parent.as_os_str().is_empty())
+    {
+        fs::create_dir_all(directory)
+            .map_err(|error| format!("cannot create directory {}: {error}", directory.display()))?;
+    }
+    fs::write(path, image).map_err(|error| format!("cannot write {}: {error}", path.display()))?;
+    println!("Wrote {} (shuffle seed {seed})", path.display());
+    Ok(())
 }
