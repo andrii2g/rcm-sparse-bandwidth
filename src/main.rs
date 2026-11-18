@@ -1,4 +1,5 @@
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::Instant;
@@ -6,6 +7,7 @@ use std::time::Instant;
 use clap::{Parser, Subcommand};
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
+use rcm_sparse_bandwidth::benchmark;
 use rcm_sparse_bandwidth::graph::Graph;
 use rcm_sparse_bandwidth::metrics::Metrics;
 use rcm_sparse_bandwidth::ordering::{BfsStats, TraceEvent, rcm, trace_rcm};
@@ -42,6 +44,15 @@ enum Command {
         #[arg(long, default_value_t = DEFAULT_SEED)]
         seed: u64,
     },
+    /// Benchmark RCM and seeded shuffles on generated sparse graphs.
+    Benchmark {
+        #[arg(long, value_delimiter = ',', default_value = "25,50,100,200")]
+        vertices: Vec<usize>,
+        #[arg(long, default_value_t = 100)]
+        trials: usize,
+        #[arg(long, default_value_t = DEFAULT_SEED)]
+        seed: u64,
+    },
 }
 
 fn main() -> ExitCode {
@@ -66,6 +77,11 @@ fn run(command: Command) -> Result<(), String> {
             println!("Verified {graphs} graphs with seed {seed}.");
             Ok(())
         }
+        Command::Benchmark {
+            vertices,
+            trials,
+            seed,
+        } => benchmark::run(&vertices, trials, seed, &mut io::stdout().lock()),
     }
 }
 
