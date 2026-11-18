@@ -2,6 +2,7 @@ use rcm_sparse_bandwidth::graph::Graph;
 use rcm_sparse_bandwidth::metrics::Metrics;
 use rcm_sparse_bandwidth::ordering::{BfsStats, rcm};
 use rcm_sparse_bandwidth::permutation::Permutation;
+use rcm_sparse_bandwidth::verification::verify;
 
 #[test]
 fn restores_scrambled_path() {
@@ -112,4 +113,10 @@ fn validates_graphs_and_permutations_before_indexing() {
             profile: 0
         }
     );
+}
+
+#[test]
+fn verifies_seeded_graphs_against_an_independent_matrix_oracle() {
+    verify(21, 42).unwrap();
+    assert!(verify(0, 42).is_err());
 }

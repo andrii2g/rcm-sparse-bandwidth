@@ -10,6 +10,7 @@ use rcm_sparse_bandwidth::graph::Graph;
 use rcm_sparse_bandwidth::metrics::Metrics;
 use rcm_sparse_bandwidth::ordering::{BfsStats, TraceEvent, rcm, trace_rcm};
 use rcm_sparse_bandwidth::permutation::{Permutation, shuffled_indices};
+use rcm_sparse_bandwidth::verification::verify;
 
 const DEFAULT_SEED: u64 = 42;
 
@@ -34,6 +35,13 @@ enum Command {
         #[arg(long)]
         input: PathBuf,
     },
+    /// Check graph, permutation, and matrix-vector invariants on generated fixtures.
+    Verify {
+        #[arg(long, default_value_t = 1000)]
+        graphs: usize,
+        #[arg(long, default_value_t = DEFAULT_SEED)]
+        seed: u64,
+    },
 }
 
 fn main() -> ExitCode {
@@ -51,6 +59,11 @@ fn run(command: Command) -> Result<(), String> {
         Command::Analyze { input, seed } => analyze(&read_graph(&input)?, seed),
         Command::Trace { input } => {
             trace(&read_graph(&input)?);
+            Ok(())
+        }
+        Command::Verify { graphs, seed } => {
+            verify(graphs, seed)?;
+            println!("Verified {graphs} graphs with seed {seed}.");
             Ok(())
         }
     }
